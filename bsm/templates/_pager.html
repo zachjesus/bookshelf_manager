@@ -1,0 +1,7 @@
+{% if pager.pages > 1 %}
+<div class="pager">
+  {% if pager.has_previous %}<a href="?q={{ q|urlencode }}&amp;sort={{ sort }}&amp;page={{ pager.previous }}{% if aq %}&amp;aq={{ aq|urlencode }}{% endif %}{% if asort %}&amp;asort={{ asort }}{% endif %}{% if apage %}&amp;apage={{ apage }}{% endif %}">← Previous</a>{% endif %}
+  <span>Page {{ pager.page }} of {{ pager.pages }}</span>
+  {% if pager.has_next %}<a href="?q={{ q|urlencode }}&amp;sort={{ sort }}&amp;page={{ pager.next }}{% if aq %}&amp;aq={{ aq|urlencode }}{% endif %}{% if asort %}&amp;asort={{ asort }}{% endif %}{% if apage %}&amp;apage={{ apage }}{% endif %}">Next →</a>{% endif %}
+</div>
+{% endif %}

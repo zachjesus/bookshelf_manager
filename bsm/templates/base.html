@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>{% block title %}Bookshelf Manager{% endblock %}</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; background: #f7f6f3; color: #4a4a4a; line-height: 1.5;
+  font-family: Helvetica, Arial, sans-serif; }
+a { color: #478ab7; text-decoration: none; }
+a:hover { color: #2f5f80; text-decoration: underline; }
+h1, h2 { font-family: Helvetica, Arial, sans-serif; color: #363636;
+  font-weight: bold; margin: 0 0 .25em; }
+h1 { font-size: 1.65rem; }
+h2 { font-size: 1.2rem; }
+.container { max-width: 62rem; margin: 0 auto; padding: 0 1.25rem; }
+header { background: #363636; color: #fff; }
+header a:link, header a:visited, header a:hover, header a:active { color: #fff; }
+header .container { display: flex; align-items: center; gap: 1.25rem;
+  min-height: 3.25rem; flex-wrap: wrap; }
+header .brand { font-size: 1.15rem; font-weight: bold; }
+header nav { display: flex; gap: 1.25rem; margin-left: auto; align-items: center;
+  font-size: .875rem; color: #fff; }
+header button { background: transparent; border-color: #9a9a9a; color: #fff;
+  padding: .3rem .7rem; }
+header button:hover { border-color: #fff; color: #fff; }
+main { padding: 1.75rem 0 3rem; }
+.sub { color: #767676; font-size: .875rem; margin: 0 0 1.5rem; }
+.panel { background: #fff; border: 1px solid #e2ded6; border-radius: 4px; }
+.box { padding: 1.25rem; margin-bottom: 2rem; background: #f4f8fb; }
+.box input[type=text], .box input[type=password] { width: 100%; }
+label { display: block; font-size: .8125rem; color: #767676; margin-bottom: .3rem; }
+.row { display: flex; gap: .5rem; justify-content: flex-end; margin-top: 1.25rem; }
+.toolbar { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center;
+  margin-bottom: .75rem; }
+.toolbar form { display: flex; gap: .5rem; flex: 1 1 22rem; }
+input[type=search], input[type=text], input[type=password] { flex: 1;
+  padding: .5rem .7rem; border: 1px solid #cfc9bd; border-radius: 3px;
+  background: #fff; font-size: .95rem; color: #363636; }
+input:focus { outline: 2px solid #478ab7; outline-offset: -1px; }
+button { font: inherit; font-size: .875rem; padding: .5rem .9rem; cursor: pointer;
+  border: 1px solid #cfc9bd; border-radius: 3px; background: #fff; color: #363636; }
+button:hover { border-color: #767676; }
+button.primary { background: #478ab7; border-color: #478ab7; color: #fff; }
+button.primary:hover { background: #3a749c; }
+button.danger { background: #fff; border-color: #d3b1b1; color: #a4302a; }
+button.danger:hover { background: #a4302a; border-color: #a4302a; color: #fff; }
+button:disabled { opacity: .5; cursor: default; }
+.sorts { display: flex; gap: .4rem; flex-wrap: wrap; align-items: center;
+  font-size: .8125rem; color: #767676; margin-bottom: 1rem; }
+.sorts a, .sorts span { padding: .25rem .6rem; border-radius: 999px;
+  border: 1px solid transparent; }
+.sorts a:hover { background: #ebe7e0; text-decoration: none; }
+.sorts .on { background: #fff; border-color: #cfc9bd; color: #363636; }
+table { width: 100%; border-collapse: collapse; background: #fff; font-size: .9375rem; }
+th, td { text-align: left; padding: .6rem .85rem; border-bottom: 1px solid #eeeae3;
+  vertical-align: top; }
+th { font-size: .75rem; text-transform: uppercase; letter-spacing: .04em;
+  color: #767676; background: #faf9f7; font-weight: 600; }
+tbody tr:last-child td { border-bottom: 0; }
+tbody tr:hover { background: #fcfbf9; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums;
+  color: #767676; white-space: nowrap; }
+td.act { text-align: right; white-space: nowrap; width: 1%; }
+.id { font-variant-numeric: tabular-nums; color: #767676; }
+.meta { display: block; color: #767676; font-size: .8125rem; }
+.empty { padding: 2.5rem 1rem; text-align: center; color: #767676; background: #fff; }
+.pager { display: flex; gap: 1rem; align-items: center; justify-content: center;
+  margin-top: 1.25rem; font-size: .875rem; color: #767676; }
+.msg { padding: .7rem 1rem; border-radius: 3px; margin-bottom: 1rem;
+  border: 1px solid; font-size: .9375rem; }
+.msg.success { background: #eef7ee; border-color: #bcdcbc; color: #2b6b2b; }
+.msg.error { background: #fbeeee; border-color: #e2bdbd; color: #a4302a; }
+.msg.info { background: #eef4f9; border-color: #bfd6e8; color: #35688c; }
+dialog { border: 1px solid #cfc9bd; border-radius: 5px; padding: 1.5rem;
+  max-width: 30rem; width: calc(100% - 2rem); color: #4a4a4a; }
+dialog::backdrop { background: rgba(54, 54, 54, .55); }
+dialog p { margin: 0 0 1rem; }
+dialog input { width: 100%; }
+.warn { font-size: .8125rem; color: #a4302a; }
+</style>
+</head>
+<body>
+<header>
+  <div class="container">
+    <a class="brand" href="{% url 'shelves' %}">Bookshelf Manager</a>
+    <nav>
+      <a href="https://www.gutenberg.org">Project Gutenberg</a>
+      {% if user.is_authenticated %}
+        <span>{{ user.get_username }}</span>
+        <form method="post" action="{% url 'logout' %}">{% csrf_token %}
+          <button type="submit">Log out</button>
+        </form>
+      {% endif %}
+    </nav>
+  </div>
+</header>
+<main>
+  <div class="container">
+    {% for message in messages %}
+      <div class="msg {{ message.tags }}">{{ message }}</div>
+    {% endfor %}
+    {% block content %}{% endblock %}
+  </div>
+</main>
+</body>
+</html>

@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Sign in - Bookshelf Manager{% endblock %}
+
+{% block content %}
+<div class="panel box" style="max-width:24rem;margin:3rem auto;">
+  <h1>Sign in</h1>
+  <p class="sub">Manage Project Gutenberg bookshelves.</p>
+  {% if form.errors %}<div class="msg error">That username and password did not match.</div>{% endif %}
+  <form method="post">{% csrf_token %}
+    <label for="id_username">Username</label>
+    <input type="text" name="username" id="id_username" autocomplete="username" autofocus required>
+    <label for="id_password" style="margin-top:.75rem;">Password</label>
+    <input type="password" name="password" id="id_password" autocomplete="current-password" required>
+    <div class="row"><button class="primary" type="submit">Sign in</button></div>
+  </form>
+</div>
+{% endblock %}

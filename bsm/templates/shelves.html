@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Bookshelves - Bookshelf Manager{% endblock %}
+
+{% block content %}
+<h1>Bookshelves</h1>
+<p class="sub">{{ pager.total }} bookshel{{ pager.total|pluralize:"f,ves" }}{% if q %} matching “{{ q }}”{% endif %}.</p>
+
+<div class="toolbar">
+  <form method="get">
+    <input type="search" name="q" value="{{ q }}" placeholder="Search shelves by name or ID" autofocus>
+    <input type="hidden" name="sort" value="{{ sort }}">
+    <button class="primary" type="submit">Search</button>
+    {% if q %}<a href="{% url 'shelves' %}?sort={{ sort }}"><button type="button">Clear</button></a>{% endif %}
+  </form>
+</div>
+
+{% include "_sorts.html" %}
+
+<div class="panel">
+{% if shelves %}
+<table>
+  <thead><tr>
+    <th class="num">ID</th><th>Bookshelf</th>
+    <th class="num">Books</th><th class="num">Downloads</th>
+  </tr></thead>
+  <tbody>
+  {% for shelf in shelves %}
+    <tr>
+      <td class="num">{{ shelf.pk }}</td>
+      <td><a href="{% url 'shelf' shelf.pk %}">{{ shelf.bookshelf }}</a></td>
+      <td class="num">{{ shelf.books }}</td>
+      <td class="num">{{ shelf.downloads }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="empty">No bookshelves matched that search.</p>
+{% endif %}
+</div>
+
+{% include "_pager.html" %}
+{% endblock %}

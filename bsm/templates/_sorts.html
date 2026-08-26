@@ -1,0 +1,7 @@
+<div class="sorts">
+  <span>Sort</span>
+  {% for key, option in sorts.items %}
+    {% if key == sort %}<span class="on">{{ option.0 }}</span>
+    {% else %}<a href="?q={{ q|urlencode }}&amp;sort={{ key }}{% if aq %}&amp;aq={{ aq|urlencode }}{% endif %}{% if asort %}&amp;asort={{ asort }}{% endif %}{% if apage %}&amp;apage={{ apage }}{% endif %}">{{ option.0 }}</a>{% endif %}
+  {% endfor %}
+</div>
