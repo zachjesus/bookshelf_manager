@@ -2,13 +2,20 @@
 {% block title %}{{ shelf.bookshelf }} - Bookshelf Manager{% endblock %}
 
 {% block content %}
-<p class="sub"><a href="{% url 'shelves' %}">← All bookshelves</a></p>
+<p class="sub"><a href="{% url 'shelves' %}">All bookshelves</a></p>
 <h1>{{ shelf.bookshelf }}</h1>
-<p class="sub">Shelf #{{ shelf.pk }} · {{ shelf.books }} book{{ shelf.books|pluralize }} · {{ shelf.downloads }} downloads</p>
+<p class="sub">{% if is_draft %}Not in the catalog yet{% else %}Shelf #{{ shelf.pk }} · {{ shelf.downloads }} downloads{% endif %} · {{ shelf.books }} book{{ shelf.books|pluralize }}{% if shelf.queued_from %} · was “{{ shelf.queued_from }}”{% endif %}</p>
+
+<form method="post" action="{{ rename_url }}" class="toolbar"
+      onsubmit="return confirm('Rename this bookshelf?');">
+  {% csrf_token %}
+  <input type="text" name="name" value="{{ shelf.bookshelf }}" required>
+  <button class="primary" type="submit">Rename</button>
+</form>
 
 <div class="panel box">
   <h2>Add a book</h2>
-  <p class="sub">Search the catalog by title, author or ebook number, then add a result to this shelf.</p>
+  <p class="sub">Search by title, author, or ebook number.</p>
   <form method="get" class="toolbar">
     <input type="hidden" name="q" value="{{ q }}">
     <input type="hidden" name="sort" value="{{ sort }}">
@@ -16,7 +23,7 @@
     <input type="hidden" name="asort" value="{{ asort }}">
     <input type="search" name="aq" value="{{ aq }}" placeholder="e.g. twain sawyer, or 74">
     <button class="primary" type="submit">Search catalog</button>
-    {% if aq %}<a href="{% url 'shelf' shelf.pk %}?q={{ q|urlencode }}&amp;sort={{ sort }}{% if pager.page > 1 %}&amp;page={{ pager.page }}{% endif %}"><button type="button">Clear</button></a>{% endif %}
+    {% if aq %}<a href="{{ shelf_url }}?q={{ q|urlencode }}&amp;sort={{ sort }}{% if pager.page > 1 %}&amp;page={{ pager.page }}{% endif %}"><button type="button">Clear</button></a>{% endif %}
   </form>
   {% if aq %}
   <div class="sorts">
@@ -30,6 +37,7 @@
   {% if aq and not candidates %}<p class="empty">No ebooks matched “{{ aq }}”.</p>{% endif %}
   {% if candidates %}
   <p class="sub">{{ apager.total }} ebook{{ apager.total|pluralize }}.</p>
+  {% include "_pager.html" with pager=apager page_name="apage" keep_page=pager.page %}
   <table>
     <thead><tr><th class="num">ID</th><th>Title</th><th class="num">Downloads</th><th class="act"></th></tr></thead>
     <tbody>
@@ -49,13 +57,6 @@
     {% endfor %}
     </tbody>
   </table>
-  {% if apager.pages > 1 %}
-  <div class="pager">
-    {% if apager.has_previous %}<a href="?q={{ q|urlencode }}&amp;sort={{ sort }}{% if pager.page > 1 %}&amp;page={{ pager.page }}{% endif %}&amp;aq={{ aq|urlencode }}&amp;asort={{ asort }}&amp;apage={{ apager.previous }}">← Previous</a>{% endif %}
-    <span>Page {{ apager.page }} of {{ apager.pages }}</span>
-    {% if apager.has_next %}<a href="?q={{ q|urlencode }}&amp;sort={{ sort }}{% if pager.page > 1 %}&amp;page={{ pager.page }}{% endif %}&amp;aq={{ aq|urlencode }}&amp;asort={{ asort }}&amp;apage={{ apager.next }}">Next →</a>{% endif %}
-  </div>
-  {% endif %}
   {% endif %}
 </div>
 
@@ -66,12 +67,14 @@
     <input type="hidden" name="sort" value="{{ sort }}">
     <input type="hidden" name="asort" value="{{ asort }}">
     <input type="hidden" name="apage" value="{{ apage }}">
+    <input type="hidden" name="aq" value="{{ aq }}">
     <button class="primary" type="submit">Search</button>
-    {% if q %}<a href="{% url 'shelf' shelf.pk %}?sort={{ sort }}{% if aq %}&amp;aq={{ aq|urlencode }}{% endif %}"><button type="button">Clear</button></a>{% endif %}
+    {% if q %}<a href="{{ shelf_url }}?sort={{ sort }}{% if aq %}&amp;aq={{ aq|urlencode }}{% endif %}"><button type="button">Clear</button></a>{% endif %}
   </form>
 </div>
 
 {% include "_sorts.html" %}
+{% include "_pager.html" %}
 
 <div class="panel">
 {% if books %}
@@ -99,8 +102,6 @@
 {% endif %}
 </div>
 
-{% include "_pager.html" %}
-
 <dialog id="confirm">
   <form method="post" id="confirm-form">{% csrf_token %}
     <input type="hidden" name="book" id="confirm-book">
@@ -108,10 +109,10 @@
     <h2>Are you sure?</h2>
     <p><span id="confirm-verb"></span> <strong id="confirm-title"></strong>
        <span id="confirm-prep"></span> <strong>{{ shelf.bookshelf }}</strong>?</p>
-    <p class="warn">This writes to the live Project Gutenberg catalog straight away.</p>
+    <p class="warn">This will go in the next weekly report.</p>
     {% if reauth_needed %}
       <div id="confirm-auth">
-        <label for="confirm-password">Confirm your password to continue</label>
+        <label for="confirm-password">Password</label>
         <input type="password" name="password" id="confirm-password"
                autocomplete="current-password">
       </div>
@@ -133,7 +134,7 @@
   document.querySelectorAll('button[data-book]').forEach(function (button) {
     button.addEventListener('click', function () {
       var add = button.dataset.action === 'add';
-      form.action = add ? '{% url "add_book" shelf.pk %}' : '{% url "remove_book" shelf.pk %}';
+      form.action = add ? '{{ add_url }}' : '{{ remove_url }}';
       document.getElementById('confirm-book').value = button.dataset.book;
       document.getElementById('confirm-title').textContent =
         '“' + button.dataset.title + '” (#' + button.dataset.book + ')';

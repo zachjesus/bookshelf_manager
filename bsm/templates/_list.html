@@ -1,0 +1,8 @@
+<h2>{{ title }} ({{ count }})</h2>
+{% if rows %}
+<ul>
+{% for row in rows %}<li>{{ row }}</li>{% endfor %}
+</ul>
+{% else %}
+<p class="sub">None.</p>
+{% endif %}

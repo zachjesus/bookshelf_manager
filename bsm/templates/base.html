@@ -36,7 +36,7 @@ label { display: block; font-size: .8125rem; color: #767676; margin-bottom: .3re
 .toolbar { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center;
   margin-bottom: .75rem; }
 .toolbar form { display: flex; gap: .5rem; flex: 1 1 22rem; }
-input[type=search], input[type=text], input[type=password] { flex: 1;
+input[type=search], input[type=text], input[type=password], input[type=number] { flex: 1;
   padding: .5rem .7rem; border: 1px solid #cfc9bd; border-radius: 3px;
   background: #fff; font-size: .95rem; color: #363636; }
 input:focus { outline: 2px solid #478ab7; outline-offset: -1px; }
@@ -68,7 +68,13 @@ td.act { text-align: right; white-space: nowrap; width: 1%; }
 .meta { display: block; color: #767676; font-size: .8125rem; }
 .empty { padding: 2.5rem 1rem; text-align: center; color: #767676; background: #fff; }
 .pager { display: flex; gap: 1rem; align-items: center; justify-content: center;
-  margin-top: 1.25rem; font-size: .875rem; color: #767676; }
+  margin: 0 0 1rem; font-size: .875rem; color: #767676; }
+.pager-jump { display: flex; align-items: center; gap: .35rem; margin: 0;
+  font-size: inherit; color: inherit; }
+.pager input[type=number] { width: 3.25rem; flex: none; text-align: center;
+  padding: .15rem .3rem; font-size: inherit; appearance: textfield; }
+.pager input[type=number]::-webkit-inner-spin-button,
+.pager input[type=number]::-webkit-outer-spin-button { appearance: none; margin: 0; }
 .msg { padding: .7rem 1rem; border-radius: 3px; margin-bottom: 1rem;
   border: 1px solid; font-size: .9375rem; }
 .msg.success { background: #eef7ee; border-color: #bcdcbc; color: #2b6b2b; }
@@ -88,6 +94,9 @@ dialog input { width: 100%; }
     <a class="brand" href="{% url 'shelves' %}">Bookshelf Manager</a>
     <nav>
       <a href="https://www.gutenberg.org">Project Gutenberg</a>
+      {% if can_view_reports %}
+        <a href="{% url 'reviews' %}">Reports</a>
+      {% endif %}
       {% if user.is_authenticated %}
         <span>{{ user.get_username }}</span>
         <form method="post" action="{% url 'logout' %}">{% csrf_token %}

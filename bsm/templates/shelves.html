@@ -5,6 +5,16 @@
 <h1>Bookshelves</h1>
 <p class="sub">{{ pager.total }} bookshel{{ pager.total|pluralize:"f,ves" }}{% if q %} matching “{{ q }}”{% endif %}.</p>
 
+<div class="panel box">
+  <h2>Create a bookshelf</h2>
+  <form method="post" action="{% url 'create_shelf' %}" class="toolbar"
+        onsubmit="return confirm('Create this bookshelf?');">
+    {% csrf_token %}
+    <input type="text" name="name" placeholder="Bookshelf name" required>
+    <button class="primary" type="submit">Create</button>
+  </form>
+</div>
+
 <div class="toolbar">
   <form method="get">
     <input type="search" name="q" value="{{ q }}" placeholder="Search shelves by name or ID" autofocus>
@@ -16,6 +26,28 @@
 
 {% include "_sorts.html" %}
 
+{% if drafts %}
+<h2>Not in the catalog yet</h2>
+<div class="panel" style="margin-bottom:1.5rem;">
+<table>
+  <thead><tr>
+    <th>Bookshelf</th>
+    <th class="num">Books</th>
+  </tr></thead>
+  <tbody>
+  {% for shelf in drafts %}
+    <tr>
+      <td><a href="{% url 'new_shelf' shelf.pk %}">{{ shelf.bookshelf }}</a></td>
+      <td class="num">{{ shelf.books }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endif %}
+
+<h2>In the catalog</h2>
+{% include "_pager.html" %}
 <div class="panel">
 {% if shelves %}
 <table>
@@ -38,6 +70,4 @@
 <p class="empty">No bookshelves matched that search.</p>
 {% endif %}
 </div>
-
-{% include "_pager.html" %}
 {% endblock %}

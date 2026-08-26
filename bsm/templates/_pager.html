@@ -1,7 +1,22 @@
 {% if pager.pages > 1 %}
-<div class="pager">
-  {% if pager.has_previous %}<a href="?q={{ q|urlencode }}&amp;sort={{ sort }}&amp;page={{ pager.previous }}{% if aq %}&amp;aq={{ aq|urlencode }}{% endif %}{% if asort %}&amp;asort={{ asort }}{% endif %}{% if apage %}&amp;apage={{ apage }}{% endif %}">← Previous</a>{% endif %}
-  <span>Page {{ pager.page }} of {{ pager.pages }}</span>
-  {% if pager.has_next %}<a href="?q={{ q|urlencode }}&amp;sort={{ sort }}&amp;page={{ pager.next }}{% if aq %}&amp;aq={{ aq|urlencode }}{% endif %}{% if asort %}&amp;asort={{ asort }}{% endif %}{% if apage %}&amp;apage={{ apage }}{% endif %}">Next →</a>{% endif %}
-</div>
+{% with name=page_name|default:"page" %}
+<form class="pager" method="get">
+  {% if q %}<input type="hidden" name="q" value="{{ q }}">{% endif %}
+  {% if sort %}<input type="hidden" name="sort" value="{{ sort }}">{% endif %}
+  {% if aq %}<input type="hidden" name="aq" value="{{ aq }}">{% endif %}
+  {% if asort %}<input type="hidden" name="asort" value="{{ asort }}">{% endif %}
+  {% if name != "page" and keep_page > 1 %}<input type="hidden" name="page" value="{{ keep_page }}">{% endif %}
+  {% if name != "apage" and apage %}<input type="hidden" name="apage" value="{{ apage }}">{% endif %}
+  <label class="pager-jump">Page
+    <input type="number" name="{{ name }}" min="1" max="{{ pager.pages }}" value="{{ pager.page }}" required onchange="this.form.submit()">
+    of {{ pager.pages }}
+  </label>
+  {% if pager.has_previous %}
+  <a href="?q={{ q|urlencode }}&amp;sort={{ sort }}{% if name == 'page' %}&amp;page={{ pager.previous }}{% elif keep_page > 1 %}&amp;page={{ keep_page }}{% endif %}{% if aq %}&amp;aq={{ aq|urlencode }}{% endif %}{% if asort %}&amp;asort={{ asort }}{% endif %}{% if name == 'apage' %}&amp;apage={{ pager.previous }}{% elif apage %}&amp;apage={{ apage }}{% endif %}">Previous</a>
+  {% endif %}
+  {% if pager.has_next %}
+  <a href="?q={{ q|urlencode }}&amp;sort={{ sort }}{% if name == 'page' %}&amp;page={{ pager.next }}{% elif keep_page > 1 %}&amp;page={{ keep_page }}{% endif %}{% if aq %}&amp;aq={{ aq|urlencode }}{% endif %}{% if asort %}&amp;asort={{ asort }}{% endif %}{% if name == 'apage' %}&amp;apage={{ pager.next }}{% elif apage %}&amp;apage={{ apage }}{% endif %}">Next</a>
+  {% endif %}
+</form>
+{% endwith %}
 {% endif %}

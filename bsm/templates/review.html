@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}{{ report.week }} - Bookshelf Manager{% endblock %}
+
+{% block content %}
+<p class="sub"><a href="{% url 'reviews' %}">All reports</a></p>
+<h1>Week {{ report.week }}</h1>
+<p class="sub">{{ start }} to {{ end }}</p>
+
+{% if report.status == 'applied' %}
+<div class="msg success">Applied{% if report.applied_at %} {{ report.applied_at }}{% endif %}.</div>
+{% elif report.status == 'vetted' %}
+<div class="msg success">Voting is done. Ready to apply.</div>
+{% else %}
+<div class="msg info">{{ votes.accepted }} accepted, {{ votes.denied }} denied, {{ votes.pending }} waiting.</div>
+{% endif %}
+
+{% if report.status == 'open' and not can_vote %}
+<p class="sub">You can look, but not vote.</p>
+{% endif %}
+
+{% if accepted %}
+<h2>Accepted</h2>
+<ul>
+{% for row in accepted %}<li>{{ row.label }}</li>{% endfor %}
+</ul>
+{% endif %}
+
+{% for title, rows in groups %}
+{% if rows %}
+<h2>{{ title }}</h2>
+<ul>
+{% for row in rows %}
+  <li>
+    {{ row.label }}
+    <span class="meta">{% if row.status == 'pending' %}waiting{% else %}{{ row.status }}{% endif %}{% for person in row.people %} · {{ person.email }} {% if person.accept == True %}yes{% elif person.accept == False %}no{% else %}waiting{% endif %}{% endfor %}</span>
+    {% if can_vote and report.status == 'open' %}
+    <form method="post" class="toolbar" style="margin:.4rem 0 0;">
+      {% csrf_token %}
+      <input type="hidden" name="item" value="{{ row.id }}">
+      <button class="primary" type="submit" name="vote" value="accept">Accept{% if row.mine == True %}ed{% endif %}</button>
+      <button class="danger" type="submit" name="vote" value="deny">{% if row.mine == False %}Denied{% else %}Deny{% endif %}</button>
+    </form>
+    {% endif %}
+  </li>
+{% endfor %}
+</ul>
+{% endif %}
+{% endfor %}
+{% endblock %}

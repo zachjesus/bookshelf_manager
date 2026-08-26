@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Weekly reports - Bookshelf Manager{% endblock %}
+
+{% block content %}
+<h1>Weekly reports</h1>
+
+<div class="panel">
+{% if rows %}
+<table>
+  <thead><tr>
+    <th>Week</th><th>Status</th><th>Changes</th><th>Votes</th>
+  </tr></thead>
+  <tbody>
+  {% for row in rows %}
+    <tr>
+      <td><a href="{% url 'review' row.report.week %}">{{ row.report.week }}</a>
+        <span class="meta">{{ row.span.0 }} to {{ row.span.1 }}</span></td>
+      <td>{{ row.report.status }}</td>
+      <td>{{ row.counts.creates }} new · {{ row.counts.renames }} rename · {{ row.counts.adds }} add · {{ row.counts.removes }} remove</td>
+      <td>{{ row.votes.accepted }} accepted, {{ row.votes.denied }} denied, {{ row.votes.pending }} waiting</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="empty">No reports yet.</p>
+{% endif %}
+</div>
+{% endblock %}

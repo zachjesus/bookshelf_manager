@@ -2,7 +2,7 @@ import re
 from contextlib import contextmanager
 
 from django.conf import settings
-from sqlalchemy import text
+from sqlalchemy import bindparam, text
 
 SHELF_SORTS = {
     'name': ('Name', 'b.bookshelf'),
@@ -47,13 +47,14 @@ def _session():
 
 
 def _run(sql, **params):
+    stmt = text(sql)
+    expanding = [key for key, value in params.items()
+                 if isinstance(value, (list, tuple, set)) and (':%s' % key) in sql]
+    if expanding:
+        stmt = stmt.bindparams(*[bindparam(key, expanding=True) for key in expanding])
+        params = {key: (list(value) if key in expanding else value) for key, value in params.items()}
     with _session() as session:
-        return [dict(row) for row in session.execute(text(sql), params).mappings()]
-
-
-def _write(sql, shelf_pk, book_pk):
-    with _session() as session:
-        return session.execute(text(sql), {'book': book_pk, 'shelf': shelf_pk}).rowcount
+        return [dict(row) for row in session.execute(stmt, params).mappings()]
 
 
 def _args(query, page):
@@ -66,8 +67,25 @@ def _titles(rows):
     for row in rows:
         lines = [part.strip() for part in (row.get('title') or '').split('\n') if part.strip()]
         row['title'] = lines[0] if lines else 'Untitled'
-        row['subtitle'] = ' — '.join(lines[1:])
+        row['subtitle'] = '; '.join(lines[1:])
     return rows
+
+
+def _search(query):
+    if not query:
+        return ''
+    return ("AND (b.pk = :pk OR b.title ILIKE :like"
+            " OR b.tsvec @@ to_tsquery('english', :ts))")
+
+
+def _books(where, sort, params):
+    rows = _run("""
+        SELECT b.pk, b.title, b.downloads, filing(b.title, b.nonfiling) AS filing,
+               count(*) OVER () AS total, %s
+          FROM books b WHERE %s
+         ORDER BY %s LIMIT :limit OFFSET :offset
+    """ % (AUTHORS, where, BOOK_SORTS[sort][1]), **params)
+    return _titles(rows), rows[0]['total'] if rows else 0
 
 
 def shelves(query='', sort='name', page=1):
@@ -93,43 +111,65 @@ def shelf(pk):
     return rows[0] if rows else None
 
 
-def shelf_books(shelf_pk, query='', sort='title', page=1):
-    where = ("AND (b.pk = :pk OR b.title ILIKE :like"
-             " OR b.tsvec @@ to_tsquery('english', :ts))") if query else ''
-    rows = _run("""
-        SELECT b.pk, b.title, b.downloads, filing(b.title, b.nonfiling) AS filing,
-               count(*) OVER () AS total, %s
-          FROM books b JOIN mn_books_bookshelves mn ON mn.fk_books = b.pk
-         WHERE mn.fk_bookshelves = :shelf %s
-         ORDER BY %s LIMIT :limit OFFSET :offset
-    """ % (AUTHORS, where, BOOK_SORTS[sort][1]), shelf=shelf_pk, **_args(query, page))
-    return _titles(rows), rows[0]['total'] if rows else 0
+def shelf_names(pks):
+    pks = list(dict.fromkeys(pks))
+    if not pks:
+        return {}
+    rows = _run('SELECT pk, bookshelf FROM bookshelves WHERE pk IN :pks', pks=pks)
+    return {row['pk']: row['bookshelf'] for row in rows}
 
 
-def search_books(shelf_pk, query, sort='downloads', page=1):
-    rows = _run("""
-        SELECT b.pk, b.title, b.downloads, filing(b.title, b.nonfiling) AS filing,
-               count(*) OVER () AS total, %s,
-               EXISTS (SELECT 1 FROM mn_books_bookshelves mn
-                        WHERE mn.fk_books = b.pk
-                          AND mn.fk_bookshelves = :shelf) AS on_shelf
-          FROM books b
-         WHERE (b.pk = :pk OR b.tsvec @@ to_tsquery('english', :ts))
-         ORDER BY %s LIMIT :limit OFFSET :offset
-    """ % (AUTHORS, BOOK_SORTS[sort][1]), shelf=shelf_pk, **_args(query, page))
-    return _titles(rows), rows[0]['total'] if rows else 0
+def name_taken(name, exclude_pk=None):
+    sql = 'SELECT 1 FROM bookshelves WHERE bookshelf = :name'
+    params = {'name': name}
+    if exclude_pk is not None:
+        sql += ' AND pk <> :pk'
+        params['pk'] = exclude_pk
+    return bool(_run(sql + ' LIMIT 1', **params))
+
+
+def catalog_has(shelf_pk, book_pk):
+    return bool(_run("""SELECT 1 FROM mn_books_bookshelves
+                         WHERE fk_books = :book AND fk_bookshelves = :shelf LIMIT 1""",
+                     book=book_pk, shelf=shelf_pk))
+
+
+def membership(shelf_pks):
+    if not shelf_pks:
+        return set()
+    rows = _run("""SELECT fk_books, fk_bookshelves FROM mn_books_bookshelves
+                    WHERE fk_bookshelves IN :shelves""", shelves=list(shelf_pks))
+    return {(row['fk_books'], row['fk_bookshelves']) for row in rows}
+
+
+def book_titles(pks):
+    pks = list(dict.fromkeys(pk for pk in pks if pk is not None))
+    if not pks:
+        return {}
+    rows = _titles(_run('SELECT b.pk, b.title FROM books b WHERE b.pk IN :pks', pks=pks))
+    return {row['pk']: row['title'] for row in rows}
 
 
 def book_title(pk):
-    rows = _titles(_run('SELECT b.pk, b.title FROM books b WHERE b.pk = :pk', pk=pk))
-    return rows[0]['title'] if rows else None
+    return book_titles([pk]).get(pk)
 
 
-def add_book(shelf_pk, book_pk):
-    return _write("""INSERT INTO mn_books_bookshelves (fk_books, fk_bookshelves)
-                     VALUES (:book, :shelf) ON CONFLICT DO NOTHING""", shelf_pk, book_pk)
+def books_by_ids(query='', sort='title', page=1, adds=None, rems=None, catalog_pk=None):
+    adds = list(adds or [])
+    if catalog_pk is None and not adds:
+        return [], 0
+    params = dict(_args(query, page), adds=adds or [0])
+    if catalog_pk is None:
+        where = 'b.pk IN :adds'
+    else:
+        params['shelf'] = catalog_pk
+        params['rems'] = list(rems or [0])
+        where = ("(EXISTS (SELECT 1 FROM mn_books_bookshelves mn"
+                 " WHERE mn.fk_books = b.pk AND mn.fk_bookshelves = :shelf)"
+                 " OR b.pk IN :adds) AND b.pk NOT IN :rems")
+    return _books('%s %s' % (where, _search(query)), sort, params)
 
 
-def remove_book(shelf_pk, book_pk):
-    return _write("""DELETE FROM mn_books_bookshelves
-                      WHERE fk_books = :book AND fk_bookshelves = :shelf""", shelf_pk, book_pk)
+def search_books(query, sort='downloads', page=1):
+    return _books("b.pk = :pk OR b.tsvec @@ to_tsquery('english', :ts)",
+                  sort, _args(query, page))

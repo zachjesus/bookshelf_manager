@@ -53,6 +53,7 @@ TEMPLATES = [{
         'django.template.context_processors.request',
         'django.contrib.auth.context_processors.auth',
         'django.contrib.messages.context_processors.messages',
+        'bsm.models.reviewer_nav',
     ]},
 }]
 
@@ -120,7 +121,17 @@ if env('DJANGO_SECURE_COOKIES', '0') == '1':
 
 REAUTH_SECONDS = int(env('BSM_REAUTH_SECONDS', '900'))
 PAGE_SIZE = int(env('BSM_PAGE_SIZE', '50'))
-SEARCH_LIMIT = int(env('BSM_SEARCH_LIMIT', '25'))
 RATE_BROWSE = env('BSM_RATE_BROWSE', '120/m')
 RATE_WRITE = env('BSM_RATE_WRITE', '60/m')
 RATE_LOGIN = env('BSM_RATE_LOGIN', '10/m')
+RATE_API = env('BSM_RATE_API', '60/m')
+BSM_REVIEWERS = env_list('BSM_REVIEWERS')
+BSM_API_KEY = env('BSM_API_KEY')
+BSM_API_HOSTS = env_list('BSM_API_HOSTS')
+BSM_SITE_URL = env('BSM_SITE_URL', 'http://127.0.0.1:8000')
+EMAIL_HOST = env('EMAIL_HOST', 'localhost')
+EMAIL_PORT = int(env('EMAIL_PORT', '25'))
+EMAIL_HOST_USER = env('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD')
+EMAIL_USE_TLS = env('EMAIL_USE_TLS', '0') == '1'
+DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', 'bookshelf@localhost')
