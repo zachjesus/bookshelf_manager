@@ -66,28 +66,34 @@ Needs a local Gutenberg catalog (Postgres, via
 Adds, removes, new shelves, and renames are stored locally and show in the UI
 right away. They are not written to Gutenberg.
 
-`digest` snapshots the current overlay into that ISO week's report. Changes made
-after freeze wait for the next week. Denied items are dropped from the overlay
-and do not come back. A change is accepted only if every reviewer votes accept.
+Edits update this week’s report right away. Waiting items roll into the next
+ISO week (America/New_York); accepted and denied stay on the old report. Denied
+items are dropped from the overlay. A change is accepted only if every reviewer
+votes accept.
 
-Cron (or a reviewer) applies the accepted payload to Gutenberg, then tells this
-app it was applied.
+Cron writes Gutenberg first, then `POST .../applied/`. Overlay for accepted
+items is dropped only after the catalog already has them.
 
 ## Commands
 
 ```bash
+.venv/bin/python manage.py sync
 .venv/bin/python manage.py digest
 .venv/bin/python manage.py digest --send
-.venv/bin/python manage.py digest --week 2026-W35
 .venv/bin/python manage.py digest --refreeze
-.venv/bin/python manage.py digest --refreeze --send
+.venv/bin/python manage.py crontab add
+.venv/bin/python manage.py crontab show
 ```
 
-`--send` emails `BSM_REVIEWERS`. `--refreeze` remakes the current week's report
-only (votes for that week are dropped). Already-applied weeks cannot be replaced.
+`sync` (Monday morning) opens the new ISO week and moves waiting items.
+Shelf edits update this week’s report themselves. Overlay cleanup also runs
+after apply and when you browse shelves. `digest --send` emails reviewers.
+`--refreeze` remakes the current week only (votes for that week are dropped).
 
-Cron `digest --send` at the end of the ISO week (Sunday is safest). Freeze is
-one-shot unless you `--refreeze`.
+After install, run `crontab add` once. That installs:
+
+* Monday 12:05am Eastern `sync` (week rollover)
+* Sunday 6pm Eastern `digest --send`
 
 ## API
 

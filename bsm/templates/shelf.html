@@ -85,14 +85,21 @@
   </tr></thead>
   <tbody>
   {% for book in books %}
-    <tr>
+    <tr{% if book.removing %} class="removing"{% endif %}>
       <td class="num">{{ book.pk }}</td>
-      <td><a href="https://www.gutenberg.org/ebooks/{{ book.pk }}">{{ book.title }}</a>
+      <td>{% if book.removing %}<span class="struck">{{ book.title }}</span>{% else %}<a href="https://www.gutenberg.org/ebooks/{{ book.pk }}">{{ book.title }}</a>{% endif %}{% if book.pending %} <span class="pending">pending</span>{% endif %}{% if book.removing %} <span class="pending">removing</span>{% endif %}
         {% if book.subtitle %}<span class="meta">{{ book.subtitle }}</span>{% endif %}
         {% if book.authors %}<span class="meta">{{ book.authors }}</span>{% endif %}</td>
       <td class="num">{{ book.downloads }}</td>
-      <td class="act"><button type="button" class="danger" data-action="remove"
-              data-book="{{ book.pk }}" data-title="{{ book.title }}">Remove</button></td>
+      <td class="act">
+        {% if book.removing %}
+        <button type="button" class="primary" data-action="add" data-book="{{ book.pk }}"
+                data-title="{{ book.title }}">Readd</button>
+        {% else %}
+        <button type="button" class="danger" data-action="remove"
+              data-book="{{ book.pk }}" data-title="{{ book.title }}">Remove</button>
+        {% endif %}
+      </td>
     </tr>
   {% endfor %}
   </tbody>
@@ -109,7 +116,6 @@
     <h2>Are you sure?</h2>
     <p><span id="confirm-verb"></span> <strong id="confirm-title"></strong>
        <span id="confirm-prep"></span> <strong>{{ shelf.bookshelf }}</strong>?</p>
-    <p class="warn">This will go in the next weekly report.</p>
     {% if reauth_needed %}
       <div id="confirm-auth">
         <label for="confirm-password">Password</label>
@@ -138,10 +144,11 @@
       document.getElementById('confirm-book').value = button.dataset.book;
       document.getElementById('confirm-title').textContent =
         '“' + button.dataset.title + '” (#' + button.dataset.book + ')';
-      document.getElementById('confirm-verb').textContent = add ? 'Add' : 'Remove';
+      var readd = add && button.textContent.trim() === 'Readd';
+      document.getElementById('confirm-verb').textContent = readd ? 'Readd' : (add ? 'Add' : 'Remove');
       document.getElementById('confirm-prep').textContent = add ? 'to' : 'from';
       go.className = add ? 'primary' : 'danger';
-      go.textContent = add ? 'Yes, add it' : 'Yes, remove it';
+      go.textContent = readd ? 'Yes, readd it' : (add ? 'Yes, add it' : 'Yes, remove it');
       if (auth) auth.hidden = add;
       if (password) password.required = !add;
       dialog.showModal();

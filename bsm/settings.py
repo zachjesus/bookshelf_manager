@@ -28,6 +28,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django_crontab',
     'bsm',
 ]
 
@@ -83,9 +84,16 @@ LOGGING = {
 }
 
 LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'UTC'
+TIME_ZONE = env('DJANGO_TIME_ZONE', 'America/New_York')
 USE_I18N = True
 USE_TZ = True
+
+# Monday 12:05am ET: open the new ISO week and move waiting items.
+# Sunday 6pm ET: email this week’s report to reviewers.
+CRONJOBS = [
+    ('5 0 * * 1', 'django.core.management.call_command', ['sync']),
+    ('0 18 * * 0', 'django.core.management.call_command', ['digest', '--send']),
+]
 
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'

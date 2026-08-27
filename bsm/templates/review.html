@@ -18,32 +18,91 @@
 <p class="sub">You can look, but not vote.</p>
 {% endif %}
 
+{% if accepted or denied %}
+<section class="review-section">
+<h2>Decided <span class="count">{{ votes.accepted|add:votes.denied }}</span></h2>
+
 {% if accepted %}
-<h2>Accepted</h2>
-<ul>
-{% for row in accepted %}<li>{{ row.label }}</li>{% endfor %}
+<h3 class="review-kind">Accepted</h3>
+<ul class="review-list">
+{% for title, rows in accepted %}
+{% for row in rows %}
+  <li>
+    <div class="review-item">
+      <span class="tag accepted">Accepted</span>
+      <span class="review-label">{{ row.label }}</span>
+    </div>
+    <span class="meta">{{ title }}</span>
+    {% if can_vote and report.status != 'applied' %}
+    <form method="post" class="toolbar" style="margin:.4rem 0 0;">
+      {% csrf_token %}
+      <input type="hidden" name="item" value="{{ row.id }}">
+      <button class="danger" type="submit" name="vote" value="deny">Deny</button>
+      <button type="submit" name="vote" value="clear">Clear</button>
+    </form>
+    {% endif %}
+  </li>
+{% endfor %}
+{% endfor %}
 </ul>
 {% endif %}
 
-{% for title, rows in groups %}
-{% if rows %}
-<h2>{{ title }}</h2>
-<ul>
+{% if denied %}
+<h3 class="review-kind">Denied</h3>
+<ul class="review-list">
+{% for title, rows in denied %}
 {% for row in rows %}
   <li>
-    {{ row.label }}
-    <span class="meta">{% if row.status == 'pending' %}waiting{% else %}{{ row.status }}{% endif %}{% for person in row.people %} · {{ person.email }} {% if person.accept == True %}yes{% elif person.accept == False %}no{% else %}waiting{% endif %}{% endfor %}</span>
-    {% if can_vote and report.status == 'open' %}
+    <div class="review-item">
+      <span class="tag denied">Denied</span>
+      <span class="review-label">{{ row.label }}</span>
+    </div>
+    <span class="meta">{% if row.forced %}Denied with shelf · {% endif %}{{ title }}</span>
+    {% if can_vote and report.status != 'applied' and not row.forced %}
+    <form method="post" class="toolbar" style="margin:.4rem 0 0;">
+      {% csrf_token %}
+      <input type="hidden" name="item" value="{{ row.id }}">
+      <button class="primary" type="submit" name="vote" value="accept">Accept</button>
+      <button type="submit" name="vote" value="clear">Clear</button>
+    </form>
+    {% endif %}
+  </li>
+{% endfor %}
+{% endfor %}
+</ul>
+{% endif %}
+</section>
+{% endif %}
+
+{% if waiting %}
+<section class="review-section review-undecided">
+<h2>Undecided <span class="count">{{ votes.pending }}</span></h2>
+<p class="review-hint">Needs a vote.</p>
+{% for title, rows in waiting %}
+<h3 class="review-kind">{{ title }}</h3>
+<ul class="review-list">
+{% for row in rows %}
+  <li>
+    <div class="review-item">
+      <span class="tag waiting">Waiting</span>
+      <span class="review-label">{{ row.label }}</span>
+    </div>
+    <span class="meta">{{ row.voted }}/{{ row.needed }} votes</span>
+    {% if can_vote and report.status != 'applied' %}
     <form method="post" class="toolbar" style="margin:.4rem 0 0;">
       {% csrf_token %}
       <input type="hidden" name="item" value="{{ row.id }}">
       <button class="primary" type="submit" name="vote" value="accept">Accept{% if row.mine == True %}ed{% endif %}</button>
       <button class="danger" type="submit" name="vote" value="deny">{% if row.mine == False %}Denied{% else %}Deny{% endif %}</button>
+      {% if row.mine != None %}
+      <button type="submit" name="vote" value="clear">Clear</button>
+      {% endif %}
     </form>
     {% endif %}
   </li>
 {% endfor %}
 </ul>
-{% endif %}
 {% endfor %}
+</section>
+{% endif %}
 {% endblock %}

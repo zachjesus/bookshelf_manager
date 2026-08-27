@@ -19,7 +19,9 @@ class Command(BaseCommand):
         if action == 'wrong_week':
             raise CommandError('You can only refreeze the current week (%s).' % ch.current_week())
         if action == 'applied':
-            raise CommandError('Week %s was already applied. Not replaced.' % report.week)
+            raise CommandError('Week %s was already applied. Not replaced.' % (opts.get('week') or ch.current_week()))
+        if action == 'missing':
+            raise CommandError('No report for that week.')
         start, end = ch.week_span(report.week)
         url = urljoin(settings.BSM_SITE_URL.rstrip('/') + '/', reverse('review', args=[report.week]))
         listing = ch.present_text(report.payload)
@@ -28,9 +30,7 @@ class Command(BaseCommand):
             % (report.week, start.isoformat(), end.isoformat(), listing, url)
         )
         self.stdout.write(body)
-        if action == 'kept':
-            self.stdout.write('Already saved for this week. Use --refreeze to remake it.')
-        elif action == 'replaced':
+        if action == 'replaced':
             self.stdout.write('Replaced this week’s report. Earlier votes are gone.')
         if not opts['send']:
             return

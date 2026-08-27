@@ -93,6 +93,7 @@ def _load(pk, draft):
 
 
 def _shelf_page(request, shelf, is_draft=False):
+    ch.reconcile_overlay()
     pk = shelf['pk']
     names = ('new_add_book', 'new_remove_book', 'new_shelf', 'new_rename') if is_draft \
         else ('add_book', 'remove_book', 'shelf', 'rename_shelf')
@@ -109,11 +110,14 @@ def _shelf_page(request, shelf, is_draft=False):
         candidates, apager = _paged(lambda p: g.search_books(add_query, asort, p), apage)
     else:
         candidates, apager = [], _pager(0, 1)
-    on_prod = set() if is_draft or not candidates else {book for book, _ in g.membership([pk])}
+    on_prod = set() if is_draft else {book for book, _ in g.membership([pk])}
+    for row in books:
+        row['pending'] = (not is_draft) and row['pk'] in adds and row['pk'] not in on_prod
+        row['removing'] = (not is_draft) and row['pk'] in rems
     for row in candidates:
         row['on_shelf'] = (row['pk'] in on_prod or row['pk'] in adds) and row['pk'] not in rems
     shelf = dict(shelf)
-    shelf['books'] = len(adds) if is_draft else shelf['books'] + len(adds) - len(rems)
+    shelf['books'] = len(adds) if is_draft else shelf['books'] + len(adds)
     return render(request, 'shelf.html', {
         'shelf': shelf, 'books': books, 'q': query, 'sort': sort, 'is_draft': is_draft,
         'sorts': g.BOOK_SORTS, 'pager': pager, 'aq': add_query,
@@ -127,6 +131,7 @@ def _shelf_page(request, shelf, is_draft=False):
 @login_required
 @ratelimit(key='user', rate=settings.RATE_BROWSE, block=True)
 def shelf_list(request):
+    ch.reconcile_overlay()
     query, page = request.GET.get('q', '').strip(), _page(request)
     sort = _sort(request, g.SHELF_SORTS, 'name')
     rows, pager = _paged(lambda p: g.shelves(query, sort, p), page)
@@ -153,6 +158,7 @@ def create_shelf(request):
         messages.error(request, 'A bookshelf with that name already exists.')
     else:
         draft = DraftShelf.objects.create(name=name)
+        ch.sync_current()
         messages.success(request, 'Created “%s”.' % name)
         return redirect('new_shelf', pk=draft.pk)
     return redirect('shelves')
@@ -201,6 +207,7 @@ def modify(request, pk, action, draft=False):
             return redirect(_back(request, fallback))
         request.session['reauth_at'] = time.time()
     if ch.set_want(ch.key(pk, draft), book, want, on_prod):
+        ch.sync_current()
         messages.success(request, '%s “%s” (#%s).' % (
             'Added' if want else 'Removed', title, book))
     else:
@@ -225,16 +232,20 @@ def rename_shelf(request, pk, draft=False):
         messages.error(request, 'A bookshelf with that name already exists.')
     elif draft:
         DraftShelf.objects.filter(pk=pk).update(name=name)
+        ch.sync_current()
         messages.success(request, 'Name is now “%s”.' % name)
     elif ch.set_rename(pk, name, obj['bookshelf']):
+        ch.sync_current()
         messages.success(request, 'Renamed to “%s”.' % name)
     else:
+        ch.sync_current()
         messages.success(request, 'Name is back to the catalog name.')
     return redirect(fallback)
 
 
 @reports_required
 def review_list(request):
+    ch.sync_current()
     rows = [{'report': r, 'votes': ch.vote_state(r), 'span': ch.week_span(r.week),
              'counts': ch.counts(r.payload)} for r in Report.objects.all()]
     return render(request, 'reviews.html', {'rows': rows})
@@ -242,30 +253,42 @@ def review_list(request):
 
 @reports_required
 def review_detail(request, week):
+    if week == ch.current_week():
+        ch.sync_current()
     report = get_object_or_404(Report, week=week)
     can_vote = is_reviewer(request.user)
-    if request.method == 'POST' and report.status == Report.OPEN:
+    if request.method == 'POST' and report.status != Report.APPLIED:
         if not can_vote:
             messages.error(request, 'Only reviewers can vote.')
             return redirect('review', week=week)
         item_id = request.POST.get('item', '')
-        accept = request.POST.get('vote') == 'accept'
+        raw = request.POST.get('vote', '')
+        if raw == 'clear':
+            accept = None
+        else:
+            accept = raw == 'accept'
         ch.cast_vote(report, request.user, item_id, accept)
-        messages.success(request, 'Saved your vote.')
+        messages.success(request, 'Cleared your vote.' if accept is None else 'Saved your vote.')
         return redirect('review', week=week)
     state = ch.vote_state(report)
     start, end = ch.week_span(report.week)
     rows = ch.review_items(report, request.user)
-    groups = [
-        ('New bookshelves', [row for row in rows if row['kind'] == 'create']),
-        ('Renames', [row for row in rows if row['kind'] == 'rename']),
-        ('Add to shelves', [row for row in rows if row['kind'] == 'add']),
-        ('Remove from shelves', [row for row in rows if row['kind'] == 'remove']),
-    ]
-    accepted = [row for row in rows if row['status'] == 'accepted']
+    kinds = (
+        ('New bookshelves', 'create'),
+        ('Renames', 'rename'),
+        ('Add to shelves', 'add'),
+        ('Remove from shelves', 'remove'),
+    )
+
+    def buckets(status):
+        return [(title, [row for row in rows if row['kind'] == kind and row['status'] == status])
+                for title, kind in kinds if any(row['kind'] == kind and row['status'] == status
+                                                for row in rows)]
+
     return render(request, 'review.html', {
         'report': report, 'votes': state, 'start': start, 'end': end,
-        'counts': ch.counts(report.payload), 'groups': groups, 'accepted': accepted,
+        'counts': ch.counts(report.payload), 'waiting': buckets('pending'),
+        'accepted': buckets('accepted'), 'denied': buckets('denied'),
         'can_vote': can_vote,
     })
 

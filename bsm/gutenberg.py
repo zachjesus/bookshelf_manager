@@ -128,6 +128,11 @@ def name_taken(name, exclude_pk=None):
     return bool(_run(sql + ' LIMIT 1', **params))
 
 
+def shelf_pk_by_name(name):
+    rows = _run('SELECT pk FROM bookshelves WHERE bookshelf = :name LIMIT 1', name=name)
+    return rows[0]['pk'] if rows else None
+
+
 def catalog_has(shelf_pk, book_pk):
     return bool(_run("""SELECT 1 FROM mn_books_bookshelves
                          WHERE fk_books = :book AND fk_bookshelves = :shelf LIMIT 1""",
@@ -164,9 +169,9 @@ def books_by_ids(query='', sort='title', page=1, adds=None, rems=None, catalog_p
     else:
         params['shelf'] = catalog_pk
         params['rems'] = list(rems or [0])
-        where = ("(EXISTS (SELECT 1 FROM mn_books_bookshelves mn"
+        where = ("EXISTS (SELECT 1 FROM mn_books_bookshelves mn"
                  " WHERE mn.fk_books = b.pk AND mn.fk_bookshelves = :shelf)"
-                 " OR b.pk IN :adds) AND b.pk NOT IN :rems")
+                 " OR b.pk IN :adds OR b.pk IN :rems")
     return _books('%s %s' % (where, _search(query)), sort, params)
 
 
