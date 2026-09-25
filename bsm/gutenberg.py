@@ -1,4 +1,3 @@
-import re
 from contextlib import contextmanager
 
 from django.conf import settings
@@ -31,15 +30,6 @@ def _session():
         session.close()
 
 
-def _ts(query):
-    words = re.findall(r'\w+', query or '')
-    return ' & '.join(word + ':*' for word in words)
-
-
-def _like(query):
-    return '%' + re.sub(r'[%_\\]', '', query) + '%'
-
-
 def _page(stmt, session, page):
     page = max(1, int(page or 1))
     size = settings.PAGE_SIZE
@@ -60,13 +50,10 @@ def _titles(rows):
 
 def _book_query(query):
     cat = _models().t_v_appserver_books_4
-    conds = [cat.c.title.ilike(_like(query))]
     if str(query).isdigit():
-        conds.append(cat.c.pk == int(query))
-    ts = _ts(query)
-    if ts:
-        conds.append(cat.c.tsvec.op('@@')(func.to_tsquery('english', ts)))
-    return cat, or_(*conds)
+        return cat, cat.c.pk == int(query)
+    match = cat.c.tsvec.op('@@')(func.websearch_to_tsquery('english', query))
+    return cat, match
 
 
 def shelves(query='', page=1):
@@ -79,9 +66,10 @@ def shelves(query='', page=1):
         .group_by(shelf.id, shelf.bookshelf, shelf.downloads)
         .order_by(shelf.bookshelf))
     if query:
-        cond = shelf.bookshelf.ilike(_like(query))
         if query.isdigit():
-            cond = or_(cond, shelf.id == int(query))
+            cond = shelf.id == int(query)
+        else:
+            cond = shelf.tsvec.op('@@')(func.websearch_to_tsquery('english', query))
         stmt = stmt.where(cond)
     with _session() as session:
         return _page(stmt, session, page)
