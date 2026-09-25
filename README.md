@@ -46,3 +46,13 @@ POST /api/processed/     {"ids": [1, 2]}
 
 Write those rows into `mn_books_bookshelves`, then `POST` the ids. A change is
 marked processed only when the catalog already matches.
+
+## Apply from cron
+
+`apply.py` does that one pass. It uses the same `PG*` settings as the other
+Gutenberg tools, plus `BSM_API_URL` and `BSM_API_KEY`. Failures go to
+`apply.log`. A change that cannot be written is logged there for a manual fix.
+
+```bash
+BSM_API_URL=http://127.0.0.1:8000 BSM_API_KEY=dev .venv/bin/python apply.py
+```
