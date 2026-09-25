@@ -71,26 +71,8 @@ td.act { text-align: right; white-space: nowrap; width: 1%; }
   line-height: 1.2; padding: .12rem .5rem; margin-left: .35rem;
   border-radius: 999px; vertical-align: middle;
   background: #fbf3e0; color: #8a5a12; border: 1px solid #e6d0a1; }
+.pending.accepted { background: #2b6b2b; color: #fff; border-color: #2b6b2b; }
 .tag { margin-left: 0; margin-right: .35rem; }
-.tag.accepted { background: #2b6b2b; color: #fff; border-color: #2b6b2b; }
-.tag.denied { background: #a4302a; color: #fff; border-color: #a4302a; }
-.tag.waiting { background: #8a5a12; color: #fff; border-color: #8a5a12; }
-.review-section { margin: 0 0 1.75rem; padding: 1.1rem 1.25rem 1rem;
-  background: #fff; border: 1px solid #e2ded6; border-radius: 4px; }
-.review-section h2 { display: flex; align-items: baseline; gap: .5rem;
-  font-size: 1.15rem; margin-bottom: .75rem; }
-.review-section .count { font-size: .875rem; font-weight: 600; color: #767676; }
-.review-undecided { border-color: #d8c49a; box-shadow: inset 3px 0 0 #8a5a12; }
-.review-hint { color: #767676; font-size: .875rem; margin: -.35rem 0 .9rem; }
-.review-kind { font-size: .8125rem; text-transform: uppercase; letter-spacing: .04em;
-  color: #767676; margin: 1rem 0 .4rem; font-weight: 600; }
-.review-section > .review-kind:first-of-type { margin-top: 0; }
-.review-list { list-style: none; margin: 0 0 .5rem; padding: 0; }
-.review-list li { padding: .75rem 0; border-top: 1px solid #eeeae3; color: #363636; }
-.review-list li:first-child { border-top: 0; padding-top: .15rem; }
-.review-item { display: flex; flex-wrap: wrap; align-items: baseline; gap: .45rem; }
-.review-label { color: #363636; }
-.review-list .meta { margin-top: .2rem; }
 .struck { text-decoration: line-through; color: #767676; }
 tr.removing { background: #fcfbf9; }
 .empty { padding: 2.5rem 1rem; text-align: center; color: #767676; background: #fff; }
@@ -107,12 +89,7 @@ tr.removing { background: #fcfbf9; }
 .msg.success { background: #eef7ee; border-color: #bcdcbc; color: #2b6b2b; }
 .msg.error { background: #fbeeee; border-color: #e2bdbd; color: #a4302a; }
 .msg.info { background: #eef4f9; border-color: #bfd6e8; color: #35688c; }
-dialog { border: 1px solid #cfc9bd; border-radius: 5px; padding: 1.5rem;
-  max-width: 30rem; width: calc(100% - 2rem); color: #4a4a4a; }
-dialog::backdrop { background: rgba(54, 54, 54, .55); }
-dialog p { margin: 0 0 1rem; }
-dialog input { width: 100%; }
-.warn { font-size: .8125rem; color: #a4302a; }
+form.votes { display: flex; flex-wrap: nowrap; gap: .4rem; margin: 0; justify-content: flex-end; }
 </style>
 </head>
 <body>
@@ -121,10 +98,8 @@ dialog input { width: 100%; }
     <a class="brand" href="{% url 'shelves' %}">Bookshelf Manager</a>
     <nav>
       <a href="https://www.gutenberg.org">Project Gutenberg</a>
-      {% if can_view_reports %}
-        <a href="{% url 'reviews' %}">Reports</a>
-      {% endif %}
       {% if user.is_authenticated %}
+        <a href="{% url 'review' %}">Queue</a>
         <span>{{ user.get_username }}</span>
         <form method="post" action="{% url 'logout' %}">{% csrf_token %}
           <button type="submit">Log out</button>
